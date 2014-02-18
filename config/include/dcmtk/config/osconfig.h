@@ -20,23 +20,9 @@
 **
 */
 
-#ifdef HAVE_CONFIG_H
-/*
-** Some sort of Unix platform supported by the GNU Configure utility.
-** Just include the automatically generated <cfunix.h>
-*/
+
 #include "cfunix.h"
 
-#elif defined(_WIN32)
-/*
-** Visual C++ in a Windows 32 bit environment (Windows 9x/Me/NT/2000/XP)
-*/
-#include "dcmtk/config/cfwin32.h"
 
-#else
-/*
-** Don't know what sort of machine this is
-*/
-#endif
 
 #endif /* !OSCONFIG_H*/

@@ -314,10 +314,19 @@ OFCondition DJCodecEncoder::encodeColorImage(
   {
     if (compressedBits == 0)
     {
-      result = ((DcmItem *)dataset)->findAndGetUint16(DCM_BitsStored, compressedBits);
+        result = ((DcmItem *)dataset)->findAndGetUint16(DCM_BitsStored, compressedBits);
+        
+        if( strcmp( photometricInterpretation, "RGB") == 0)
+            compressedBits = 8;
+        
+        if( samplesPerPixel != 1)
+            compressedBits = 8;
     }
   }
 
+  Uint8 pixelRepresentation = 0;
+  dataset->findAndGetUint8(DCM_PixelRepresentation, pixelRepresentation);
+	
   // create codec instance
   if (result.good())
   {
@@ -346,9 +355,9 @@ OFCondition DJCodecEncoder::encodeColorImage(
           jpegData = NULL;
           if (bytesPerSample == 1)
           {
-            result = jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint8 *)frame, jpegData, jpegLen);
+            result = jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint8 *)frame, jpegData, jpegLen, pixelRepresentation, 0.0, 0.0);
           } else {
-            result = jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint16 *)frame, jpegData, jpegLen);
+            result = jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint16 *)frame, jpegData, jpegLen, pixelRepresentation, 0.0, 0.0);
           }
 
           // store frame
@@ -526,6 +535,9 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
     else    // Palette, HSV, ARGB, CMYK
       interpr = EPI_Unknown;
 
+	Uint8 pixelRepresentation = 0;
+	datsetItem->findAndGetUint8(DCM_PixelRepresentation, pixelRepresentation);
+	  
     // IJG libs need "color by pixel", transform if required
     if (result.good() && (samplesPerPixel > 1) )
     {
@@ -536,21 +548,24 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
           result = togglePlanarConfiguration8((Uint8*)pixelData, length, samplesPerPixel, (Uint16)1 /* switch to "by pixel"*/);
         else
           result = togglePlanarConfiguration16((Uint16*)pixelData, length/2 /*16 bit*/, samplesPerPixel, (Uint16)1 /* switch to "by pixel"*/);
-        planConfSwitched = OFTrue;
+        
+		if (result.bad())
+		{
+			CERR << "True Lossless Encoder: Unable to change Planar Configuration for encoding" << endl;
+			return result;
+		}
+		
+		planConfSwitched = OFTrue;
       }
     }
-    if (result.bad())
-    {
-        CERR << "True Lossless Encoder: Unable to change Planar Configuration for encoding" << endl;
-        return result;
-    }
+    
 
     //check whether enough raw data is available for encoding
-    if (bytesAllocated * samplesPerPixel * columns * rows * OFstatic_cast(unsigned long,numberOfFrames) > length)
-    {
-      CERR << "True lossless encoder: Can not change representation, not enough data" << endl;
-      result = EC_CannotChangeRepresentation;
-    }
+//    if (bytesAllocated * samplesPerPixel * columns * rows * OFstatic_cast(unsigned int,numberOfFrames) > length)
+//    {
+//      CERR << "True lossless encoder: Can not change representation, not enough data" << endl;
+//      result = EC_CannotChangeRepresentation;
+//    }
 
     // byte swap pixel data to little endian if bits allocated is 8
     if ((gLocalByteOrder == EBO_BigEndian) && (bitsAllocated == 8))
@@ -590,11 +605,11 @@ OFCondition DJCodecEncoder::encodeTrueLossless(
       {
         if (bitsAllocated == 8)
         {
-          jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint8*)framePointer, jpegData, jpegLen);
+          jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint8*)framePointer, jpegData, jpegLen, pixelRepresentation, 0.0, 0.0);
         }
         else if (bitsAllocated == 16)
         {
-          jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint16*)framePointer, jpegData, jpegLen);
+          jpeg->encode(columns, rows, interpr, samplesPerPixel, (Uint16*)framePointer, jpegData, jpegLen, pixelRepresentation, 0.0, 0.0);
         }
         // update variables
         compressedSize+=jpegLen;
@@ -1095,35 +1110,65 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
       // compute original image size in bytes, ignoring any padding bits.
       Uint16 samplesPerPixel = 0;
       if ((dataset->findAndGetUint16(DCM_SamplesPerPixel, samplesPerPixel)).bad()) samplesPerPixel = 1;
-      uncompressedSize = columns * rows * pixelDepth * frameCount * samplesPerPixel / 8.0;
-      for (unsigned long i=0; (i<frameCount) && (result.good()); i++)
-      {
-        frame = dimage.getOutputData(bitsPerSample, i, 0);
-        if (frame == NULL) result = EC_MemoryExhausted;
-        else
-        {
-          // compress frame
-          jpegData = NULL;
-          if (bytesPerSample == 1)
-          {
-            result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint8 *)frame, jpegData, jpegLen);
-          } else {
-            result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint16 *)frame, jpegData, jpegLen);
-          }
+      
+      Uint8 pixelRepresentation = 0;
+	  dataset->findAndGetUint8(DCM_PixelRepresentation, pixelRepresentation);
+	  
+	  const char *GEIcon = NULL;
+	  OFBool isGEIcon = OFFalse;
+	  if( dataset->findAndGetString( DcmTagKey( 0x0029, 0x0010), GEIcon).good() && GEIcon)
+	  {
+		if( strcmp( GEIcon, "GEIIS") == 0) // 0x0009, 0x1110 The problematic private group, containing a *always* JPEG compressed PixelData
+			isGEIcon = OFTrue; // GE Icon pixel data are already and always compressed in JPEG -> dont touch lesion !
+	  }
+	  
+		if( isGEIcon)
+		{
+			DcmElement *dummyElem = NULL;
+			const Uint16* pixelData = NULL;
+			
+			dataset->findAndGetUint16Array(DCM_PixelData, pixelData, NULL, OFFalse);
+			dataset->findAndGetElement(DCM_PixelData, dummyElem);
+			Uint32 length = dummyElem->getLength();
+			
+			pixelSequence->storeCompressedFrame(offsetList, (Uint8 *) pixelData, length, cp->getFragmentSize());
+			compressedSize += length;
+		}
+		else
+		{
+		  uncompressedSize = columns * rows * pixelDepth * frameCount * samplesPerPixel / 8.0;
+		  for (unsigned int i=0; (i<frameCount) && (result.good()); i++)
+		  {
+				frame = dimage.getOutputData(bitsPerSample, i, 0);
+				if (frame == NULL) result = EC_MemoryExhausted;
+				else
+				{
+				  // compress frame
+				  jpegData = NULL;
+				  if (bytesPerSample == 1)
+				  {
+					result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint8 *)frame, jpegData, jpegLen, pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
+				  } 
+				  else
+				  {
+					result = jpeg->encode(columns, rows, EPI_Monochrome2, 1, (Uint16 *)frame, jpegData, jpegLen, pixelRepresentation, (minUsed-rescaleIntercept)/rescaleSlope, (maxUsed-rescaleIntercept)/rescaleSlope);
+				  }
+				  
+				  // store frame
+				  if (result.good())
+				  {
+					result = pixelSequence->storeCompressedFrame(offsetList, jpegData, jpegLen, cp->getFragmentSize());
+				  }
 
-          // store frame
-          if (result.good())
-          {
-            result = pixelSequence->storeCompressedFrame(offsetList, jpegData, jpegLen, cp->getFragmentSize());
-          }
-
-          // delete block of JPEG data
-          delete[] jpegData;
-          compressedSize += jpegLen;
-        }
-      }
-      delete jpeg;
-    } else result = EC_MemoryExhausted;
+				  // delete block of JPEG data
+				  delete[] jpegData;
+				  compressedSize += jpegLen;
+				}
+		  }
+		  delete jpeg;
+		} 
+	}
+	else result = EC_MemoryExhausted;
   }
 
   // store pixel sequence if everything went well.
@@ -1186,7 +1231,7 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
     delete dataset->remove(DCM_ModalityLUTSequence);
     delete dataset->remove(DCM_RescaleIntercept);
     delete dataset->remove(DCM_RescaleSlope);
-    delete dataset->remove(DCM_RescaleType);
+//    delete dataset->remove(DCM_RescaleType);
 
     // update Modality LUT Module and Pixel Intensity Relationship
     if (windowType == 0)
@@ -1205,8 +1250,8 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
         if (result.good()) result = dataset->putAndInsertString(DCM_RescaleSlope, buf);
         if (result.good())
         {
-          if (mode_CT) result = dataset->putAndInsertString(DCM_RescaleType, "HU"); // Hounsfield units
-          else result =         dataset->putAndInsertString(DCM_RescaleType, "US"); // unspecified
+//          if (mode_CT) result = dataset->putAndInsertString(DCM_RescaleType, "HU"); // Hounsfield units
+//          else result =         dataset->putAndInsertString(DCM_RescaleType, "US"); // unspecified
         }
       }
     }
@@ -1217,7 +1262,11 @@ OFCondition DJCodecEncoder::encodeMonochromeImage(
       {
         if (result.good()) result = dataset->putAndInsertString(DCM_RescaleIntercept, "0");
         if (result.good()) result = dataset->putAndInsertString(DCM_RescaleSlope, "1");
-        if (result.good()) result = dataset->putAndInsertString(DCM_RescaleType, "US"); // unspecified
+        if (result.good())
+		{
+			delete dataset->remove(DCM_RescaleType);
+			result = dataset->putAndInsertString(DCM_RescaleType, "US"); // unspecified
+		}
       }
 
       // Adjust Pixel Intensity Relationship (needed for XA). If present, set value to "DISP".

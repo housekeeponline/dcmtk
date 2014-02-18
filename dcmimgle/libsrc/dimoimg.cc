@@ -1680,7 +1680,7 @@ unsigned long DiMonoImage::createDIB(void *&data,
                     }
                 } else {                                    // data already aligned and correctly oriented
                     data = OutputData->getDataPtr();
-                    OutputData = NULL;                      // remove reference to internal memory
+                    OutputData->removeDataReference();        // remove reference to internal memory
                     bytes = count;
                 }
             }
@@ -1791,7 +1791,7 @@ unsigned long DiMonoImage::createAWTBitmap(void *&data,
                              (value << 16) |
                              (value << 8);          // copy to the three RGB-planes
                 }
-                bytes = count;
+                bytes = count*4;
             }
         }
         deleteOutputData();                             // output data is no longer needed

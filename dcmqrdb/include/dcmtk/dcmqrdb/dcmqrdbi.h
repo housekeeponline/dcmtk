@@ -71,6 +71,13 @@ enum DB_LEVEL
   IMAGE_LEVEL
 };
 
+/// upper limit for the number of studies per storage area
+#define DB_UpperMaxStudies              500000000
+
+/// upper limit for the number bytes per study
+#define DB_UpperMaxBytesPerStudy        0x40000000L
+
+
 /** This enum describes the status of one entry in the database hierarchy. An 
  *  entry can describe a study, a series or an instance. A study or series is 
  *  new exactly if all subobjects (series and instances) are new. A study or 
@@ -88,11 +95,7 @@ enum DVIFhierarchyStatus
   DVIF_objectContainsNewSubobjects
 };
 
-/// upper limit for the number of studies per storage area
-#define DB_UpperMaxStudies              500
 
-/// upper limit for the number bytes per study
-#define DB_UpperMaxBytesPerStudy        0x40000000L
 
 
 /** This class maintains database handles based on the classical "index.dat" file.
@@ -252,7 +255,15 @@ public:
       char *imageFileName,
       unsigned short *numberOfRemainingSubOperations,
       DcmQueryRetrieveDatabaseStatus *status);
-  
+
+  OFCondition nextMoveResponse(
+      char *SOPClassUID,
+      char *SOPInstanceUID,
+      char *imageFileName,
+	  E_TransferSyntax preferredTS,
+      unsigned short *numberOfRemainingSubOperations,
+      DcmQueryRetrieveDatabaseStatus *status);
+	  
   /** cancel the ongoing MOVE request, stop and reset every running operation
    *  associated with this request, delete existing temporary files.
    *  @param status pointer to DB status object in which a DIMSE status code 

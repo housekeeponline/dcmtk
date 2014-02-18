@@ -747,29 +747,14 @@ OFBool WlmFileSystemInteractionManager::ReferencedStudyOrPatientSequenceIsAbsent
 //                and incomplete in the given dataset.
 // Parameters   : sequenceTagKey - [in] The sequence attribute which shall be checked.
 //                dset           - [in] The dataset in which the attribute is contained.
-// Return Value : OFTrue in case the sequence attribute is absent (and cannot be added to the dataset)
-//                or existent but non-empty and incomplete, OFFalse otherwise.
+// Return Value : OFTrue in case the sequence attribute is absent or existent but non-empty and incomplete, OFFalse otherwise.
 {
   DcmElement *sequence = NULL;
   OFBool result;
 
-  // check whether the type 2 sequence attribute is absent
+  // if the sequence attribute is absent, we want to return OFTrue
   if( dset->findAndGetElement( sequenceTagKey, sequence ).bad() )
-  {
-    // try to add it to the dataset and return OFFalse if successful
-    if (dset->insertEmptyElement(sequenceTagKey).good())
-    {
-      if( verboseMode )
-      {
-        char msg[500];
-        sprintf( msg, "Added missing type 2 sequence attribute (%4.4x,%4.4x) to the current record.", sequenceTagKey.getGroup(), sequenceTagKey.getElement() );
-        DumpMessage( msg );
-      }
-      result = OFFalse;
-    }
-    else
-      result = OFTrue;
-  }
+    result = OFTrue;
   else
   {
     // if the sequence attribute is existent but empty, we want to return OFFalse

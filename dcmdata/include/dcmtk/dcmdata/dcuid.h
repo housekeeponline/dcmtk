@@ -168,11 +168,11 @@ unsigned long dcmGuessModalityBytes(const char *sopClassUID);
  *       The second name is used to identify files written without dcmdata
  *       (i.e. using the --bit-preserving switch in various tools)
  */
-#define OFFIS_DTK_IMPLEMENTATION_VERSION_NAME   "OFFIS_DCMTK_354"
+#define OFFIS_DTK_IMPLEMENTATION_VERSION_NAME   "OSIRIX"
 #define OFFIS_DTK_IMPLEMENTATION_VERSION_NAME2  "OFFIS_DCMBP_354"
 #define OFFIS_DCMTK_RELEASEDATE                 "2005-12-20"
 
-#define OFFIS_UID_ROOT                          "1.2.276.0.7230010.3"
+#define OFFIS_UID_ROOT                          "1.2.276.0.7238010.5"
 #define OFFIS_DCMTK_VERSION_NUMBER              354
 #define OFFIS_DCMTK_VERSION_STRING              "3.5.4"
 #define OFFIS_DCMTK_VERSION_SUFFIX              ""
@@ -316,6 +316,7 @@ unsigned long dcmGuessModalityBytes(const char *sopClassUID);
 #define UID_PETCurveStorage                                        "1.2.840.10008.5.1.4.1.1.129"
 #define UID_CTImageStorage                                         "1.2.840.10008.5.1.4.1.1.2"
 #define UID_EnhancedCTImageStorage                                 "1.2.840.10008.5.1.4.1.1.2.1"
+#define UID_EnhancedPETImageStorage                                "1.2.840.10008.5.1.4.1.1.130"
 #define UID_NuclearMedicineImageStorage                            "1.2.840.10008.5.1.4.1.1.20"
 #define UID_RETIRED_UltrasoundMultiframeImageStorage               "1.2.840.10008.5.1.4.1.1.3"
 #define UID_UltrasoundMultiframeImageStorage                       "1.2.840.10008.5.1.4.1.1.3.1"
@@ -332,6 +333,7 @@ unsigned long dcmGuessModalityBytes(const char *sopClassUID);
 #define UID_RETIRED_NuclearMedicineImageStorage                    "1.2.840.10008.5.1.4.1.1.5"
 #define UID_RETIRED_UltrasoundImageStorage                         "1.2.840.10008.5.1.4.1.1.6"
 #define UID_UltrasoundImageStorage                                 "1.2.840.10008.5.1.4.1.1.6.1"
+#define UID_EnhancedUSVolumeStorage                                "1.2.840.10008.5.1.4.1.1.6.2"
 #define UID_RawDataStorage                                         "1.2.840.10008.5.1.4.1.1.66"
 #define UID_SpatialRegistrationStorage                             "1.2.840.10008.5.1.4.1.1.66.1"
 #define UID_SpatialFiducialsStorage                                "1.2.840.10008.5.1.4.1.1.66.2"
@@ -351,6 +353,7 @@ unsigned long dcmGuessModalityBytes(const char *sopClassUID);
 #define UID_OphthalmicPhotography8BitImageStorage                  "1.2.840.10008.5.1.4.1.1.77.1.5.1"
 #define UID_OphthalmicPhotography16BitImageStorage                 "1.2.840.10008.5.1.4.1.1.77.1.5.2"
 #define UID_StereometricRelationshipStorage                        "1.2.840.10008.5.1.4.1.1.77.1.5.3"
+#define UID_OphthalmicTomographyImageStorage                       "1.2.840.10008.5.1.4.1.1.77.1.5.4"
 #define UID_RETIRED_VLMultiFrameImageStorage                       "1.2.840.10008.5.1.4.1.1.77.2"
 #define UID_StandaloneOverlayStorage                               "1.2.840.10008.5.1.4.1.1.8"
 #define UID_BasicTextSR                                            "1.2.840.10008.5.1.4.1.1.88.11"
@@ -370,10 +373,15 @@ unsigned long dcmGuessModalityBytes(const char *sopClassUID);
 
 #define UID_EnhancedXAImageStorage                                 "1.2.840.10008.5.1.4.1.1.12.1.1"
 #define UID_EnhancedXRFImageStorage                                "1.2.840.10008.5.1.4.1.1.12.2.1"
+#define XRay3DAngiographicImageStorage                             "1.2.840.10008.5.1.4.1.1.13.1.1"
+#define XRay3DCraniofacialImageStorage                             "1.2.840.10008.5.1.4.1.1.13.1.2"
+#define UID_BreastTomosynthesisImageStorage                        "1.2.840.10008.5.1.4.1.1.13.1.3"
+
 #define UID_ColorSoftcopyPresentationStateStorage                  "1.2.840.10008.5.1.4.1.1.11.2"
 #define UID_PseudoColorSoftcopyPresentationStateStorage            "1.2.840.10008.5.1.4.1.1.11.3"
 #define UID_BlendingSoftcopyPresentationStateStorage               "1.2.840.10008.5.1.4.1.1.11.4"
 #define UID_EncapsulatedPDFStorage                                 "1.2.840.10008.5.1.4.1.1.104.1"
+#define UID_EncapsulatedCDAStorage                                 "1.2.840.10008.5.1.4.1.1.104.2"
 #define UID_RealWorldValueMappingStorage                           "1.2.840.10008.5.1.4.1.1.67"
 #define UID_XRayRadiationDoseSR                                    "1.2.840.10008.5.1.4.1.1.88.67"
 
@@ -545,6 +553,8 @@ unsigned long dcmGuessModalityBytes(const char *sopClassUID);
 #define UID_HangingProtocolStorage                                 "1.2.840.10008.5.1.4.38.1"
 
 // Private DCMTK UIDs
+#define UID_PhilipsPrivateXRayMFStorage                             "1.3.46.670589.7.8.1618510091"
+#define UID_SiemensCSAPrivateNonImageStorage                        "1.3.12.2.1107.5.9.1"
 
 // Private SOP Class UID used to shutdown external network applications
 #define UID_PrivateShutdownSOPClass                                "1.2.276.0.7230010.3.4.1915765545.18030.917282194.0"

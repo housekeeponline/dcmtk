@@ -139,6 +139,7 @@ END_EXTERN_C
 #include "dcmtk/dcmnet/dcmtrans.h"
 #include "dcmtk/dcmnet/dcmlayer.h"
 #include "dcmtk/ofstd/ofstd.h"
+int AbortAssociationTimeOut = PRV_DEFAULTTIMEOUT;
 
 OFGlobal<OFBool> dcmDisableGethostbyaddr(OFFalse);
 OFGlobal<Sint32> dcmConnectionTimeout(-1);
@@ -484,7 +485,7 @@ DUL_RequestAssociation(
         return cond;
     }
     /* Find the next event */
-    cond = PRV_NextPDUType(association, DUL_BLOCK, PRV_DEFAULTTIMEOUT, &pduType);
+    cond = PRV_NextPDUType(association, DUL_NOBLOCK, PRV_DEFAULTTIMEOUT, &pduType);
     if (cond == DUL_NETWORKCLOSED)
         event = TRANS_CONN_CLOSED;
     else if (cond == DUL_READTIMEOUT)
@@ -597,14 +598,20 @@ DUL_ReceiveAssociationRQ(
     cond = receiveTransportConnection(network, block, timeout, params, association);
 
     if (cond.bad() || (cond.code() == DULC_FORKEDCHILD))
+	{
+		destroyAssociationKey(association);
+		*association = NULL;
         return cond;
-
+	}
+	
     cond = PRV_StateMachine(network, association,
                   TRANS_CONN_INDICATION, (*network)->protocolState, params);
     if (cond.bad())
         return cond;
 
-    cond = PRV_NextPDUType(association, DUL_NOBLOCK, PRV_DEFAULTTIMEOUT, &pduType);
+    //cond = PRV_NextPDUType(association, DUL_NOBLOCK, PRV_DEFAULTTIMEOUT, &pduType);
+	cond = PRV_NextPDUType(association, block, timeout, &pduType); 
+	
     if (cond == DUL_NETWORKCLOSED)
         event = TRANS_CONN_CLOSED;
     else if (cond == DUL_READTIMEOUT)
@@ -805,7 +812,8 @@ DUL_DropAssociation(DUL_ASSOCIATIONKEY ** callerAssociation)
 
     association = (PRIVATE_ASSOCIATIONKEY **) callerAssociation;
     OFCondition cond = checkAssociation(association);
-    if (cond.bad()) return cond;
+    if (cond.bad())
+        return cond;
 
     if ((*association)->connection)
     {
@@ -813,6 +821,7 @@ DUL_DropAssociation(DUL_ASSOCIATIONKEY ** callerAssociation)
      delete (*association)->connection;
      (*association)->connection = NULL;
     }
+    
     destroyAssociationKey(association);
     return EC_Normal;
 }
@@ -962,7 +971,7 @@ DUL_AbortAssociation(DUL_ASSOCIATIONKEY ** callerAssociation)
     OFBool done = OFFalse;
     while (!done)
     {
-        cond = PRV_NextPDUType(association, DUL_NOBLOCK, PRV_DEFAULTTIMEOUT, &pduType); // may return DUL_NETWORKCLOSED.
+        cond = PRV_NextPDUType(association, DUL_NOBLOCK, AbortAssociationTimeOut, &pduType); // may return DUL_NETWORKCLOSED. // ANR 2009 PRV_DEFAULTTIMEOUT
 
         if (cond == DUL_NETWORKCLOSED) event = TRANS_CONN_CLOSED;
         else if (cond == DUL_READTIMEOUT) event = ARTIM_TIMER_EXPIRED;
@@ -1754,7 +1763,29 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         sprintf(buf1, "TCP Initialization Error: %s", strerror(errno));
         return makeDcmnetCondition(DULC_TCPINITERROR, OF_error, buf1);
     }
-#endif
+	
+ #ifndef DISABLE_RECV_TIMEOUT
+     /* use a timeout of 60 seconds for the recv() function */
+     const int recvTimeout = 60;
+ #ifdef HAVE_WINSOCK_H
+     // for Windows, specify receive timeout in milliseconds
+     int timeoutVal = recvTimeout * 1000;
+     if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeoutVal, sizeof(timeoutVal)) < 0)
+ #else
+     // for other systems, specify receive timeout as timeval struct
+     struct timeval timeoutVal;
+     timeoutVal.tv_sec = recvTimeout;
+     timeoutVal.tv_usec = 0;
+     if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeoutVal, sizeof(timeoutVal)) < 0)
+ #endif
+     {
+         // according to MSDN: available in the Microsoft implementation of Windows Sockets 2,
+         // so we are reporting a warning message but are not returning with an error code;
+         // this also applies to all other systems where the call to this function might fail
+     }
+ #endif
+ #endif
+	
     setTCPBufferLength(sock);
 
 #ifndef DONT_DISABLE_NAGLE_ALGORITHM
@@ -1791,7 +1822,8 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
        ((int) from.sa_data[4]) & 0xff,
        ((int) from.sa_data[5]) & 0xff);
 
-    if (! dcmDisableGethostbyaddr.get()) remote = gethostbyaddr(&from.sa_data[2], 4, 2);
+//    if (! dcmDisableGethostbyaddr.get()) remote = gethostbyaddr(&from.sa_data[2], 4, 2);
+
     if (remote == NULL)
     {
         // reverse DNS lookup disabled or host not found, use numerical address
@@ -1900,7 +1932,7 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
 */
 static OFCondition
 createNetworkKey(const char *mode,
-                 int timeout, unsigned long opt, PRIVATE_NETWORKKEY ** key)
+                 int timeout, unsigned int opt, PRIVATE_NETWORKKEY ** key)
 {
     if (strcmp(mode, AE_REQUESTOR) != 0 &&
         strcmp(mode, AE_ACCEPTOR) != 0 &&
@@ -1910,7 +1942,7 @@ createNetworkKey(const char *mode,
         sprintf(buf1, "Unrecognized Network Mode: %s", mode);
         return makeDcmnetCondition(DULC_ILLEGALPARAMETER, OF_error, buf1);
     }
-    *key = (PRIVATE_NETWORKKEY *) malloc(sizeof(PRIVATE_NETWORKKEY));
+    *key = (PRIVATE_NETWORKKEY *) calloc(sizeof(PRIVATE_NETWORKKEY), 1);
     if (*key == NULL) return EC_MemoryExhausted;
     (void) strcpy((*key)->keyType, KEY_NETWORK);
 
@@ -2022,6 +2054,7 @@ initializeNetworkTCP(PRIVATE_NETWORKKEY ** key, void *parameter)
           sprintf(buf3, "TCP Initialization Error: %s", strerror(errno));
           return makeDcmnetCondition(DULC_TCPINITERROR, OF_error, buf3);
         }
+				
 /* Find out assigned port number and print it out */
         length = sizeof(server);
         if (getsockname((*key)->networkSpecific.TCP.listenSocket,
@@ -2031,6 +2064,7 @@ initializeNetworkTCP(PRIVATE_NETWORKKEY ** key, void *parameter)
           sprintf(buf4, "TCP Initialization Error: %s", strerror(errno));
           return makeDcmnetCondition(DULC_TCPINITERROR, OF_error, buf4);
         }
+		
 #ifdef HAVE_GUSI_H
         /* GUSI always returns an error for setsockopt(...) */
 #else
@@ -2085,12 +2119,12 @@ createAssociationKey(PRIVATE_NETWORKKEY ** networkKey,
                      PRIVATE_ASSOCIATIONKEY ** associationKey)
 {
     PRIVATE_ASSOCIATIONKEY *key;
-
-    key = (PRIVATE_ASSOCIATIONKEY *) malloc(
-        size_t(sizeof(PRIVATE_ASSOCIATIONKEY) + maxPDU + 100));
+    
+    key = (PRIVATE_ASSOCIATIONKEY *) calloc(
+        size_t(sizeof(PRIVATE_ASSOCIATIONKEY) + maxPDU + 100), 1);
     if (key == NULL) return EC_MemoryExhausted;
     key->receivePDUQueue = NULL;
-
+    
     (void) strcpy(key->keyType, KEY_ASSOCIATION);
     key->applicationFunction = (*networkKey)->applicationFunction;
 
@@ -2151,9 +2185,16 @@ createAssociationKey(PRIVATE_NETWORKKEY ** networkKey,
 static void
 destroyAssociationKey(PRIVATE_ASSOCIATIONKEY ** key)
 {
-    if (*key && (*key)->connection) delete (*key)->connection;
-    free(*key);
-    *key = NULL;
+	if( key == NULL)
+		return;
+		
+    if (*key && (*key)->connection)
+		delete (*key)->connection;
+    
+    if (*key)
+        free(*key);
+    
+	*key = NULL;
 }
 
 

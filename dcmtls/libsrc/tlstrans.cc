@@ -208,13 +208,22 @@ ssize_t DcmTLSConnection::write(void *buf, size_t nbyte)
 
 void DcmTLSConnection::close()
 {
-  if (tlsConnection) SSL_shutdown(tlsConnection);
+  if (tlsConnection)
+  {
+	  SSL_shutdown(tlsConnection);
+	  SSL_free(tlsConnection);
+	  tlsConnection = NULL;
+  }
+
+  if (getSocket()!=-1)
+  {
 #ifdef HAVE_WINSOCK_H
   (void) shutdown(getSocket(),  1 /* SD_SEND */);
   (void) closesocket(getSocket());
 #else
   (void) ::close(getSocket());
 #endif
+  }
 }
 
 unsigned long DcmTLSConnection::getPeerCertificateLength()

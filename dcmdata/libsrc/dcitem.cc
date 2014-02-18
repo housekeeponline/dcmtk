@@ -393,6 +393,13 @@ OFBool DcmItem::canWriteXfer(const E_TransferSyntax newXfer,
         do {
             dO = elementList->get();
             canWrite = dO->canWriteXfer(newXfer, oldXfer);
+            
+#ifndef NDEBUG
+            if( canWrite == OFFalse) {
+                printf( "--- cannot write");
+            }
+#endif
+            
         } while (elementList->seek(ELP_next) && canWrite);
     }
     return canWrite;
@@ -562,8 +569,9 @@ OFCondition DcmItem::computeGroupLengthAndPadding(const E_GrpLenEncoding glenc,
                         /* group length value to this element. */
                         if (actGLElem != NULL)
                         {
-                            actGLElem->putUint32(grplen);
-                            DCM_dcmdataDebug(2, ("DcmItem::computeGroupLengthAndPadding() Length of Group 0x%4.4x len=%lu", actGLElem->getGTag(), grplen));
+//                            actGLElem->putUint32(grplen);
+							actGLElem->putUint32Array(&grplen, 1);
+                            DCM_dcmdataDebug(2, ("DcmItem::computeGroupLengthAndPadding() Length of Group 0x%4.4x len=%u", actGLElem->getGTag(), grplen));
                         }
 
                         /* set the group length value to 0 since it is the beginning of the new group */
@@ -1154,7 +1162,7 @@ void DcmItem::transferEnd()
 // ********************************
 
 
-unsigned long DcmItem::card() const
+unsigned int DcmItem::card() const
 {
     return elementList->card();
 }
@@ -1731,10 +1739,17 @@ OFCondition newDicomElement(DcmElement *&newElement,
        */
       if (newTag.getEVR() != EVR_UNKNOWN)
       {
-        tag.setVR(newTag.getVR());
-        evr = tag.getEVR();
-        readAsUN = OFTrue;
-      }
+		if( newTag.getEVR() != EVR_SQ)	// ANR - 2008
+		{
+			tag.setVR(newTag.getVR());
+			evr = tag.getEVR();
+			readAsUN = OFTrue;
+		}
+		else
+		{
+			printf( "******************* ******************* ******************* if( newTag.getEVR() != EVR_SQ)	// ANR - 2008 ******************* \r");
+		}
+	  }
     }
 
     /* depending on the VR of the tag which was passed, create the new object */
