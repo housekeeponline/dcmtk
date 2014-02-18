@@ -50,6 +50,14 @@
 
 
 /*
+** Type Definitions
+*/
+
+typedef Uint8		    BYTE;
+typedef Sint8		    SBYTE;
+
+
+/*
 ** Enumerated Types
 */
 

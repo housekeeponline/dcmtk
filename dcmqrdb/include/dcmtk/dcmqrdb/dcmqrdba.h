@@ -183,6 +183,14 @@ public:
       unsigned short *numberOfRemainingSubOperations,
       DcmQueryRetrieveDatabaseStatus *status) = 0;
 
+  virtual OFCondition nextMoveResponse(
+      char *SOPClassUID,
+      char *SOPInstanceUID,
+      char *imageFileName,
+	  E_TransferSyntax preferredTS,
+      unsigned short *numberOfRemainingSubOperations,
+      DcmQueryRetrieveDatabaseStatus *status) = 0;
+	  
   /** cancel the ongoing MOVE request, stop and reset every running operation
    *  associated with this request, delete existing temporary files.
    *  @param status pointer to DB status object in which a DIMSE status code
@@ -207,6 +215,12 @@ public:
    *  @param checkMove checking for C-MOVE parameters
    */
   virtual void setIdentifierChecking(OFBool checkFind, OFBool checkMove) = 0;
+  
+//creates logEntry
+//  virtual OFCondition updateLogEntry(DcmDataset *dataset) = 0;
+
+//Updates values of Log entry
+//	virtual OFCondition updateLogEntry() = 0;
 
 };
 
@@ -241,7 +255,10 @@ public:
 /*
  * CVS Log
  * $Log: dcmqrdba.h,v $
- * Revision 1.4  2005-12-16 09:12:33  onken
+ * Revision 1.1  2006/03/01 20:16:07  lpysher
+ * Added dcmtkt ocvs not in xcode  and fixed bug with multiple monitors
+ *
+ * Revision 1.4  2005/12/16 09:12:33  onken
  * - Added virtual (dummy) destructor to avoid compiler warnings
  *
  * Revision 1.3  2005/12/08 16:04:21  meichel

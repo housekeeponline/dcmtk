@@ -236,7 +236,7 @@ ASC_initializeNetwork(T_ASC_NetworkRole role,
     OFCondition cond = DUL_InitializeNetwork(mode, &acceptorPort, timeout, DUL_ORDERBIGENDIAN | options, &netkey);
     if (cond.bad()) return cond;
 
-    *network = (T_ASC_Network *) malloc(sizeof(T_ASC_Network));
+    *network = (T_ASC_Network *) calloc(sizeof(T_ASC_Network), 1);
     if (*network == NULL) return EC_MemoryExhausted;
     (*network)->role = role;
     (*network)->acceptorPort = acceptorPort;
@@ -270,7 +270,7 @@ ASC_createAssociationParameters(T_ASC_Parameters ** params,
         long maxReceivePDUSize)
 {
 
-    *params = (T_ASC_Parameters *) malloc(sizeof(**params));
+    *params = (T_ASC_Parameters *) calloc(sizeof(**params), 1);
     if (*params == NULL) return EC_MemoryExhausted;
     bzero((char*)*params, sizeof(**params));
 
@@ -358,7 +358,9 @@ ASC_destroyAssociationParameters(T_ASC_Parameters ** params)
   * association terminates. 
   */
 {
-
+	if( params == NULL) return EC_Normal;
+	if( *params == NULL) return EC_Normal;
+	
     /* free the elements in the requested presentation context list */
     destroyPresentationContextList(
         &((*params)->DULparams.requestedPresentationContext));
@@ -719,7 +721,7 @@ ASC_addPresentationContext(
     OFCondition cond = EC_Normal;
     for (i=0; i<transferSyntaxListCount; i++)
     {
-        transfer = (DUL_TRANSFERSYNTAX*)malloc(sizeof(DUL_TRANSFERSYNTAX));
+        transfer = (DUL_TRANSFERSYNTAX*) calloc(sizeof(DUL_TRANSFERSYNTAX), 1);
         if (transfer == NULL) return EC_MemoryExhausted;
         strcpy(transfer->transferSyntax, transferSyntaxList[i]);
         cond = LST_Enqueue(&lst, (LST_NODE*)transfer);
@@ -1033,6 +1035,7 @@ ASC_findAcceptedPresentationContext(
     if ((pc == NULL) || (pc->result != ASC_P_ACCEPTANCE)) return ASC_BADPRESENTATIONCONTEXTID;
 
     l = &pc->proposedTransferSyntax;
+	if( l == NULL || *l == NULL) return ASC_BADPRESENTATIONCONTEXTID;
     transfer = (DUL_TRANSFERSYNTAX*) LST_Head(l);
     (void)LST_Position(l, (LST_NODE*)transfer);
     while (transfer != NULL) {
@@ -1070,14 +1073,19 @@ ASC_findAcceptedPresentationContextID(
     DUL_PRESENTATIONCONTEXT *pc;
     LST_HEAD **l;
     OFBool found = OFFalse;
-
+	
+	if (assoc->params->DULparams.acceptedPresentationContext == NULL)
+		return 0;
+	
     l = &assoc->params->DULparams.acceptedPresentationContext;
     pc = (DUL_PRESENTATIONCONTEXT*) LST_Head(l);
     (void)LST_Position(l, (LST_NODE*)pc);
     while (pc && !found)
     {
-        found = (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
-        found &= (pc->result == ASC_P_ACCEPTANCE);
+//        found = (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
+//      found &= (pc->result == ASC_P_ACCEPTANCE);
+		
+		found = ( (strcmp(pc->abstractSyntax, abstractSyntax) == 0) && (pc->result == ASC_P_ACCEPTANCE) );
         if (!found) pc = (DUL_PRESENTATIONCONTEXT*) LST_Next(l);
     }
     if (found) return pc->presentationContextID;
@@ -1103,8 +1111,12 @@ ASC_findAcceptedPresentationContextID(
     LST_HEAD **l;
     OFBool found = OFFalse;
 
-    if ((transferSyntax==NULL)||(abstractSyntax==NULL)) return 0;
-
+    if ((transferSyntax==NULL)||(abstractSyntax==NULL)) 
+		return 0;
+	
+	if (assoc->params->DULparams.acceptedPresentationContext == NULL)
+		return 0;
+		
     /* first of all we look for a presentation context
      * matching both abstract and transfer syntax
      */
@@ -1113,9 +1125,12 @@ ASC_findAcceptedPresentationContextID(
     (void)LST_Position(l, (LST_NODE*)pc);
     while (pc && !found)
     {
-        found =  (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
-        found &= (pc->result == ASC_P_ACCEPTANCE);
-        found &= (strcmp(pc->acceptedTransferSyntax, transferSyntax) == 0);
+//        found =  (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
+//        found &= (pc->result == ASC_P_ACCEPTANCE);
+//        found &= (strcmp(pc->acceptedTransferSyntax, transferSyntax) == 0);
+		
+		found = (strcmp(pc->abstractSyntax, abstractSyntax) == 0) && (pc->result == ASC_P_ACCEPTANCE) && (strcmp(pc->acceptedTransferSyntax, transferSyntax) == 0);
+		
         if (!found) pc = (DUL_PRESENTATIONCONTEXT*) LST_Next(l);
     }
     if (found) return pc->presentationContextID;
@@ -1126,10 +1141,16 @@ ASC_findAcceptedPresentationContextID(
     (void)LST_Position(l, (LST_NODE*)pc);
     while (pc && !found)
     {
-        found =  (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
-        found &= (pc->result == ASC_P_ACCEPTANCE);
-        found &= ((strcmp(pc->acceptedTransferSyntax, UID_LittleEndianExplicitTransferSyntax) == 0) ||
-                  (strcmp(pc->acceptedTransferSyntax, UID_BigEndianExplicitTransferSyntax) == 0));
+//        found =  (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
+//        found &= (pc->result == ASC_P_ACCEPTANCE);
+//        found &= ((strcmp(pc->acceptedTransferSyntax, UID_LittleEndianExplicitTransferSyntax) == 0) ||
+//                  (strcmp(pc->acceptedTransferSyntax, UID_BigEndianExplicitTransferSyntax) == 0));
+
+		found =  (strcmp(pc->abstractSyntax, abstractSyntax) == 0)
+          && (pc->result == ASC_P_ACCEPTANCE)
+          && ((strcmp(pc->acceptedTransferSyntax, UID_LittleEndianExplicitTransferSyntax) == 0)
+           || (strcmp(pc->acceptedTransferSyntax, UID_BigEndianExplicitTransferSyntax) == 0));
+
         if (!found) pc = (DUL_PRESENTATIONCONTEXT*) LST_Next(l);
     }
     if (found) return pc->presentationContextID;
@@ -1140,26 +1161,33 @@ ASC_findAcceptedPresentationContextID(
     (void)LST_Position(l, (LST_NODE*)pc);
     while (pc && !found)
     {
-        found =  (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
-        found &= (pc->result == ASC_P_ACCEPTANCE);
-        found &= (strcmp(pc->acceptedTransferSyntax, UID_LittleEndianImplicitTransferSyntax) == 0);
+//        found =  (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
+//        found &= (pc->result == ASC_P_ACCEPTANCE);
+//        found &= (strcmp(pc->acceptedTransferSyntax, UID_LittleEndianImplicitTransferSyntax) == 0);
+
+		found = (strcmp(pc->abstractSyntax, abstractSyntax) == 0)
+                && (pc->result == ASC_P_ACCEPTANCE)
+                && (strcmp(pc->acceptedTransferSyntax, UID_LittleEndianImplicitTransferSyntax) == 0);
+
         if (!found) pc = (DUL_PRESENTATIONCONTEXT*) LST_Next(l);
     }
     if (found) return pc->presentationContextID;
 
-    /* finally we accept everything we get. */
-    l = &assoc->params->DULparams.acceptedPresentationContext;
-    pc = (DUL_PRESENTATIONCONTEXT*) LST_Head(l);
-    (void)LST_Position(l, (LST_NODE*)pc);
-    while (pc && !found)
-    {
-        found =  (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
-        found &= (pc->result == ASC_P_ACCEPTANCE);
-        if (!found) pc = (DUL_PRESENTATIONCONTEXT*) LST_Next(l);
-    }
-    if (found) return pc->presentationContextID;
- 
-    return 0;   /* otherwise */
+//    /* finally we accept everything we get. */
+//    l = &assoc->params->DULparams.acceptedPresentationContext;
+//    pc = (DUL_PRESENTATIONCONTEXT*) LST_Head(l);
+//    (void)LST_Position(l, (LST_NODE*)pc);
+//    while (pc && !found)
+//    {
+//        found =  (strcmp(pc->abstractSyntax, abstractSyntax) == 0);
+//        found &= (pc->result == ASC_P_ACCEPTANCE);
+//        if (!found) pc = (DUL_PRESENTATIONCONTEXT*) LST_Next(l);
+//    }
+//    if (found) return pc->presentationContextID;
+// 
+//    return 0;   /* otherwise */
+	
+	return ASC_findAcceptedPresentationContextID(assoc, abstractSyntax);
 }
 
 
@@ -1232,7 +1260,8 @@ ASC_acceptContextsWithTransferSyntax(
                 cond = ASC_refusePresentationContext(params,
                                               pc.presentationContextID,
                                               reason);
-                if (cond.bad()) return cond;
+                if (cond.bad())
+					return cond;
             }
         }
 
@@ -1547,10 +1576,19 @@ ASC_receiveAssociation(T_ASC_Network * network,
     if (cond.bad()) return cond;
     
     cond = ASC_setTransportLayerType(params, useSecureLayer);
-    if (cond.bad()) return cond;
+    if (cond.bad())
+    {
+        ASC_destroyAssociationParameters(&params);
+        return cond;
+    }
 
-    *assoc = (T_ASC_Association *) malloc(sizeof(**assoc));
-    if (*assoc == NULL) return EC_MemoryExhausted;
+    *assoc = (T_ASC_Association *) calloc(sizeof(**assoc), 1);
+    if (*assoc == NULL)
+    {
+        ASC_destroyAssociationParameters(&params);
+        return EC_MemoryExhausted;
+    }
+    
     bzero((char*)*assoc, sizeof(**assoc));
 
     (*assoc)->params = params;
@@ -1558,8 +1596,14 @@ ASC_receiveAssociation(T_ASC_Network * network,
 
     cond = DUL_ReceiveAssociationRQ(&network->network, block, timeout,
                                     &(params->DULparams), &DULassociation, retrieveRawPDU);
-
-    if (cond.code() == DULC_FORKEDCHILD) return cond;
+	
+    if (cond.code() == DULC_FORKEDCHILD)
+    {
+        ASC_destroyAssociationParameters(&params);
+        free(*assoc);
+        *assoc = NULL;
+        return cond;
+    }
 
     (*assoc)->DULassociation = DULassociation;
 
@@ -1680,7 +1724,7 @@ ASC_requestAssociation(T_ASC_Network * network,
       return makeDcmnetCondition(ASCC_CODINGERROR, OF_error, "ASC Coding error in ASC_requestAssociation: missing presentation contexts");
     }
 
-    *assoc = (T_ASC_Association *) malloc(sizeof(**assoc));
+    *assoc = (T_ASC_Association *) calloc(sizeof(**assoc), 1);
     if (*assoc == NULL) return EC_MemoryExhausted;
     bzero((char*)*assoc, sizeof(**assoc));
 
@@ -1758,7 +1802,7 @@ ASC_requestAssociation(T_ASC_Network * network,
             sendLen = ASC_MINIMUMPDUSIZE - 12;
         }
         (*assoc)->sendPDVLength = sendLen;
-        (*assoc)->sendPDVBuffer = (unsigned char*)malloc(size_t(sendLen));
+        (*assoc)->sendPDVBuffer = (unsigned char*) calloc(size_t(sendLen), 1);
         if ((*assoc)->sendPDVBuffer == NULL) return EC_MemoryExhausted;
         strcpy(params->theirImplementationClassUID,
            params->DULparams.calledImplementationClassUID);
@@ -1844,7 +1888,7 @@ ASC_acknowledgeAssociation(
             sendLen = ASC_MINIMUMPDUSIZE - 12;
         }
         assoc->sendPDVLength = sendLen;
-        assoc->sendPDVBuffer = (unsigned char*)malloc(size_t(sendLen));
+        assoc->sendPDVBuffer = (unsigned char*) calloc(size_t(sendLen), 1);
         if (assoc->sendPDVBuffer == NULL) return EC_MemoryExhausted;
     }
     return cond;

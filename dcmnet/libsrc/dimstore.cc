@@ -350,7 +350,7 @@ privateProviderCallback(void *callbackData, unsigned long bytes)
     ctx->progress->callbackCount++;
     if (ctx->callback) {
         ctx->callback(ctx->callbackData, ctx->progress, ctx->request, 
-	    ctx->imageFileName, ctx->imageDataSet, ctx->response,
+	    ctx->imageFileName, NULL, NULL, ctx->imageDataSet, ctx->response,
 	    ctx->statusDetail);
     }
 }
@@ -426,7 +426,7 @@ DIMSE_storeProvider( T_ASC_Association *assoc,
         callbackCtx.callback = callback;
 	/* execute initial callback */
 	callback(callbackData, &progress, request, 
-	    (char*)imageFileName, imageDataSet,
+	    (char*)imageFileName, NULL, NULL, imageDataSet,
 	    &response, &statusDetail);
     } else {
         privCallback = NULL;
@@ -493,13 +493,29 @@ DIMSE_storeProvider( T_ASC_Association *assoc,
     }
    
     /* execute final callback (user does not have to provide callback) */
-    if (callback) {
+    if (callback)
+    {
         progress.state = DIMSE_StoreEnd;
-	progress.callbackCount++;
-	/* execute final callback */
-	callback(callbackData, &progress, request, 
-	    (char*)imageFileName, imageDataSet,
-	    &response, &statusDetail);
+        progress.callbackCount++;
+        
+        char *sourceAETitle = NULL;
+        char *destinationAETitle = NULL;
+        
+        if( assoc && assoc->params && assoc->params->DULparams.respondingAPTitle[ 0]) //C-Get SCU
+        {
+            sourceAETitle = assoc->params->DULparams.respondingAPTitle;
+            destinationAETitle = assoc->params->DULparams.callingAPTitle;
+        }
+        else if( assoc && assoc->params && assoc->params->DULparams.callingAPTitle[ 0]) // C-Store SCP, C-Move
+        {
+            sourceAETitle = assoc->params->DULparams.callingAPTitle;
+            destinationAETitle = assoc->params->DULparams.calledAPTitle;
+        }
+        
+        /* execute final callback */
+        callback(callbackData, &progress, request, 
+                 (char*)imageFileName, sourceAETitle, destinationAETitle, imageDataSet,
+                 &response, &statusDetail);
     }
     
     /* send a C-STORE-RSP message over the network to the other DICOM application */

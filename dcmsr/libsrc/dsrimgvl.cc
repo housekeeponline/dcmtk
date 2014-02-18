@@ -37,6 +37,9 @@
 #include "dcmtk/dcmsr/dsrimgvl.h"
 #include "dcmtk/dcmsr/dsrxmld.h"
 
+#ifdef OSIRIX_VIEWER
+#import "PathForImage.h"
+#endif
 
 DSRImageReferenceValue::DSRImageReferenceValue()
   : DSRCompositeReferenceValue(),
@@ -248,33 +251,51 @@ OFCondition DSRImageReferenceValue::renderHTML(ostream &docStream,
                                                const size_t flags,
                                                OFConsole * /*logStream*/) const
 {
+	//get rid of hyperlinik unitl we can get a valid one
     /* reference: image */
-    docStream << "<a href=\"" << HTML_HYPERLINK_PREFIX_FOR_CGI;
-    docStream << "?image=" << SOPClassUID << "+" << SOPInstanceUID;
+   // docStream << "<a href=\"" << HTML_HYPERLINK_PREFIX_FOR_CGI;
+    //docStream << "?image=" << SOPClassUID << "+" << SOPInstanceUID;
     /* reference: pstate */
-    if (PresentationState.isValid())
-    {
-        docStream << "&pstate=" << PresentationState.getSOPClassUID();
-        docStream << "+" << PresentationState.getSOPInstanceUID();
-    }
+    //if (PresentationState.isValid())
+   // {
+   //     docStream << "&pstate=" << PresentationState.getSOPClassUID();
+    //    docStream << "+" << PresentationState.getSOPInstanceUID();
+   // }
     /* reference: frames */
-    if (!FrameList.isEmpty())
-    {
-        docStream << "&frames=";
-        FrameList.print(docStream, 0 /*flags*/, '+');
-    }
-    docStream << "\">";
+   // if (!FrameList.isEmpty())
+   // {
+   //     docStream << "&frames=";
+   //     FrameList.print(docStream, 0 /*flags*/, '+');
+   // }
+   // docStream << "\">";
     /* text: image */
+	
+	//create image reference
+	docStream << endl << "<p>" << endl;
+	
+//	#ifdef OSIRIX_VIEWER
+//	docStream << "<img src=";
+//	//add sop Instance
+//	docStream << "\"" <<  pathToJPEG(SOPInstanceUID.c_str()) << "\"";
+//	//add width
+//	docStream << "width=\"256\">";
+//	#endif
+	
+	 docStream << "</p>";
+	
     const char *modality = dcmSOPClassUIDToModality(SOPClassUID.c_str());
     if (modality != NULL)
         docStream << modality;
     else
-        docStream << "unknown";
-    docStream << " image";
+        docStream << "unknown ";
+    docStream << " image ";
+	//add UID after image
+	docStream << SOPInstanceUID;
     /* text: pstate */
     if (PresentationState.isValid())
         docStream << " with GSPS";
-    docStream << "</a>";
+	//don't need ending /a if no hyperlin'
+   // docStream << "</a>";
     if (!isShort(flags))
     {
         if (flags & DSRTypes::HF_currentlyInsideAnnex)

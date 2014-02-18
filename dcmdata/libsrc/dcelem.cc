@@ -512,7 +512,11 @@ Uint8 *DcmElement::newValueField()
         // back to the caller.
         value = new (std::nothrow) Uint8[Length + 1];    // protocol error: odd value length
 #else
-        value = new Uint8[Length + 1];    // protocol error: odd value length
+        try {
+            value = new Uint8[Length + 1];    // protocol error: odd value length
+        } catch (...) {
+            value = NULL;
+        }
 #endif
         /* if creation was successful, set last byte to 0 (in order to initialize this byte) */
         /* (no value will be assigned to this byte later, since Length was odd) */
@@ -530,9 +534,13 @@ Uint8 *DcmElement::newValueField()
         // we want to use a non-throwing new here if available.
         // If the allocation fails, we report an EC_MemoryExhausted error
         // back to the caller.
-        value = new (std::nothrow) Uint8[Length];
+        value = new (std::nothrow) Uint8[Length];xx
 #else
-        value = new Uint8[Length];
+        try {
+            value = new Uint8[Length];
+        } catch (...) {
+            value = NULL;
+        }
 #endif
     /* if creation was not successful set member error flag correspondingly */
     if (!value)
@@ -838,6 +846,10 @@ OFCondition DcmElement::read(DcmInputStream &inStream,
             /* the reading of this element's value from the stream */
             if (fTransferState == ERW_init)
             {
+/*                cout << "UHUHUH: " << Length << "\n";
+                if (Length == 294912000) {
+                    int a = 0;
+                }*/
                 /* if the Length of this element's value is greater than the amount of bytes we */
                 /* can read from the stream and if the stream has random access, we want to create */
                 /* a DcmInputStreamFactory object that enables us to read this element's value later. */

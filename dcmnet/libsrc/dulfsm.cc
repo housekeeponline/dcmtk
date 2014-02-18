@@ -52,6 +52,10 @@
 ** Status:		$State: Exp $
 */
 
+extern "C"
+{
+	extern void restartSTORESCP( void);
+}
 
 #include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
 
@@ -946,7 +950,7 @@ AE_3_AssociateConfirmationAccept(PRIVATE_NETWORKKEY ** /*network*/,
             userPresentationCtx = (DUL_PRESENTATIONCONTEXT*)malloc(sizeof(DUL_PRESENTATIONCONTEXT));
             if (userPresentationCtx == NULL) return EC_MemoryExhausted;
 
-            (void) memset(userPresentationCtx, 0, sizeof(userPresentationCtx));
+            (void) memset(userPresentationCtx, 0, sizeof(DUL_PRESENTATIONCONTEXT));
             userPresentationCtx->result = prvCtx->result;
             userPresentationCtx->presentationContextID = prvCtx->contextID;
             userPresentationCtx->proposedTransferSyntax = NULL;
@@ -1393,7 +1397,7 @@ DT_2_IndicatePData(PRIVATE_NETWORKKEY ** /*network*/,
     length = pduLength;                     //set length to the PDU's length
     pdvCount = 0;                           //set counter variable to 0
     p = (*association)->fragmentBuffer;     //set p to the buffer which contains the PDU's PDVs
-    while (length > 0) {                    //as long as length is greater than 0
+    while (length >= 4) {                    //as long as length is greater than 0
         EXTRACT_LONG_BIG(p, pdvLength);     //determine the length of the current PDV (the PDV p points to)
         p += 4 + pdvLength;                 //move p so that it points to the next PDV (move p 4 bytes over the length field plus the amount of bytes which is captured in the PDV's length field (over presentation context.Id, message information header and data fragment))
         length -= 4 + pdvLength;            //update length (i.e. determine the length of the buffer which has not been evaluated yet.)
@@ -2189,6 +2193,10 @@ requestAssociationTCP(PRIVATE_NETWORKKEY ** network,
                       DUL_ASSOCIATESERVICEPARAMETERS * params,
                       PRIVATE_ASSOCIATIONKEY ** association)
 {
+    int tries = 0;
+    
+    retry:
+    
     char node[128];
     int  port;
     struct sockaddr_in server;
@@ -2196,7 +2204,7 @@ requestAssociationTCP(PRIVATE_NETWORKKEY ** network,
     int s;
     struct linger sockarg;
 
-    if (sscanf(params->calledPresentationAddress, "%[^:]:%d", node, &port) != 2)
+    if (sscanf(params->calledPresentationAddress, "%[^:]:%d", node, &port) != 2) // This will fail with IPv6
     {
         char buf[1024];
         sprintf(buf,"Illegal service parameter: %s", params->calledPresentationAddress);
@@ -2228,10 +2236,10 @@ requestAssociationTCP(PRIVATE_NETWORKKEY ** network,
      * and several Unix variants.
      * Workaround is to explicitly handle the IP address case.
      */
-    unsigned long addr = 0;
-    if ((int)(addr = inet_addr(node)) != -1) {
+    unsigned long addr = inet_addr(node);
+    if (addr != INADDR_NONE) {
         // it is an IP address
-        (void) memcpy(&server.sin_addr, &addr, (size_t) sizeof(addr));
+        server.sin_addr.s_addr = addr;
     } else {
         // must be a host name
         hp = gethostbyname(node);
@@ -2308,6 +2316,11 @@ requestAssociationTCP(PRIVATE_NETWORKKEY ** network,
 #else
             (void) close(s);
 #endif
+            tries++;
+            printf( "\r------------------ retry requestAssociationTCP : %d\r", tries);
+            if( tries < 6)
+                goto retry;
+            
             (*association)->networkState = NETWORK_DISCONNECTED;
             if ((*association)->connection) delete (*association)->connection;
             (*association)->connection = NULL;
@@ -3269,6 +3282,8 @@ readPDUHead(PRIVATE_ASSOCIATIONKEY ** association,
     /* information, we need to try to receive a PDU on the network */
     if ((*association)->inputPDU == NO_PDU)
     {
+//		if( timeout == 0)
+//			printf("Timeout %d\r", timeout);
         /* try to receive data */
         cond = readPDUHeadTCP(association, buffer, maxLength, block, timeout,
              &(*association)->nextPDUType, &(*association)->nextPDUReserved, &(*association)->nextPDULength);
@@ -3397,6 +3412,12 @@ readPDUHeadTCP(PRIVATE_ASSOCIATIONKEY ** association,
     {
         return makeDcmnetCondition(DULC_CODINGERROR, OF_error, "Coding Error in DUL routine: buffer too small in readPDUTCPHead");
     }
+	
+	if( association == 0L)
+		return makeDcmnetCondition(DULC_CODINGERROR, OF_error, "association == nil");
+	
+	if( *association == 0L)
+		return makeDcmnetCondition(DULC_CODINGERROR, OF_error, "*association == nil");
 
     /* (for non-blocking reading) if the timeout refers to */
     /* the default timeout, set timeout correspondingly */
@@ -3421,6 +3442,15 @@ readPDUHeadTCP(PRIVATE_ASSOCIATIONKEY ** association,
         DEBUG_DEVICE << dec << endl;
     }
 #endif
+
+	if( buffer == 0L)
+		return makeDcmnetCondition(DULC_CODINGERROR, OF_error, "buffer == nil");
+
+	if( type == 0L)
+		return makeDcmnetCondition(DULC_CODINGERROR, OF_error, "type == nil");
+
+	if( reserved == 0L)
+		return makeDcmnetCondition(DULC_CODINGERROR, OF_error, "reserved == nil");
 
     /* determine PDU type (captured in byte 0 of buffer) and assign it to reference parameter */
     *type = *buffer++;
@@ -3573,7 +3603,10 @@ defragmentTCP(DcmTransportConnection *connection, DUL_BLOCKOPTIONS block, time_t
 {
     unsigned char *b;
     int bytesRead;
-
+	
+	if( p == NULL)
+		return DUL_NULLKEY;
+	
     /* assign buffer to local variable */
     b = (unsigned char *) p;
 
