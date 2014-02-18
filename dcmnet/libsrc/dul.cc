@@ -145,6 +145,7 @@ END_EXTERN_C
 #include "dcmtk/dcmnet/dcmlayer.h"
 #include "dcmtk/ofstd/ofstd.h"
 #include "dcmtk/ofstd/ofnetdb.h"
+int AbortAssociationTimeOut = PRV_DEFAULTTIMEOUT;
 
 OFGlobal<OFBool> dcmDisableGethostbyaddr(OFFalse);
 OFGlobal<OFBool> dcmStrictRoleSelection(OFFalse);
@@ -630,7 +631,6 @@ DUL_ReceiveAssociationRQ(
     /* This is the first time we read from this new connection, so in case it
      * doesn't speak DICOM, we shouldn't wait forever (= DUL_NOBLOCK).
      */
-    cond = PRV_NextPDUType(association, DUL_NOBLOCK, PRV_DEFAULTTIMEOUT, &pduType);
 
     if (cond == DUL_NETWORKCLOSED)
         event = TRANS_CONN_CLOSED;
@@ -1013,7 +1013,7 @@ DUL_AbortAssociation(DUL_ASSOCIATIONKEY ** callerAssociation)
     OFBool done = OFFalse;
     while (!done)
     {
-        cond = PRV_NextPDUType(association, DUL_NOBLOCK, PRV_DEFAULTTIMEOUT, &pduType); // may return DUL_NETWORKCLOSED.
+        cond = PRV_NextPDUType(association, DUL_NOBLOCK, AbortAssociationTimeOut, &pduType); // may return DUL_NETWORKCLOSED. // ANR 2009 PRV_DEFAULTTIMEOUT
 
         if (cond == DUL_NETWORKCLOSED) event = TRANS_CONN_CLOSED;
         else if (cond == DUL_READTIMEOUT) event = ARTIM_TIMER_EXPIRED;
@@ -1832,7 +1832,29 @@ receiveTransportConnectionTCP(PRIVATE_NETWORKKEY ** network,
         msg += OFStandard::strerror(errno, buf, sizeof(buf));
         return makeDcmnetCondition(DULC_TCPINITERROR, OF_error, msg.c_str());
     }
-#endif
+	
+ #ifndef DISABLE_RECV_TIMEOUT
+     /* use a timeout of 60 seconds for the recv() function */
+     const int recvTimeout = 60;
+ #ifdef HAVE_WINSOCK_H
+     // for Windows, specify receive timeout in milliseconds
+     int timeoutVal = recvTimeout * 1000;
+     if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeoutVal, sizeof(timeoutVal)) < 0)
+ #else
+     // for other systems, specify receive timeout as timeval struct
+     struct timeval timeoutVal;
+     timeoutVal.tv_sec = recvTimeout;
+     timeoutVal.tv_usec = 0;
+     if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeoutVal, sizeof(timeoutVal)) < 0)
+ #endif
+     {
+         // according to MSDN: available in the Microsoft implementation of Windows Sockets 2,
+         // so we are reporting a warning message but are not returning with an error code;
+         // this also applies to all other systems where the call to this function might fail
+     }
+ #endif
+ #endif
+	
     setTCPBufferLength(sock);
 
 #ifndef DONT_DISABLE_NAGLE_ALGORITHM
@@ -1994,7 +2016,7 @@ createNetworkKey(const char *mode,
         msg += mode;
         return makeDcmnetCondition(DULC_ILLEGALPARAMETER, OF_error, msg.c_str());
     }
-    *key = (PRIVATE_NETWORKKEY *) malloc(sizeof(PRIVATE_NETWORKKEY));
+    *key = (PRIVATE_NETWORKKEY *) calloc(sizeof(PRIVATE_NETWORKKEY), 1);
     if (*key == NULL) return EC_MemoryExhausted;
     (void) strcpy((*key)->keyType, KEY_NETWORK);
 
@@ -2168,9 +2190,9 @@ createAssociationKey(PRIVATE_NETWORKKEY ** networkKey,
                      PRIVATE_ASSOCIATIONKEY ** associationKey)
 {
     PRIVATE_ASSOCIATIONKEY *key;
-
-    key = (PRIVATE_ASSOCIATIONKEY *) malloc(
-        size_t(sizeof(PRIVATE_ASSOCIATIONKEY) + maxPDU + 100));
+    
+    key = (PRIVATE_ASSOCIATIONKEY *) calloc(
+        size_t(sizeof(PRIVATE_ASSOCIATIONKEY) + maxPDU + 100), 1);
     if (key == NULL) return EC_MemoryExhausted;
     key->receivePDUQueue = NULL;
 
@@ -2234,9 +2256,16 @@ createAssociationKey(PRIVATE_NETWORKKEY ** networkKey,
 static void
 destroyAssociationKey(PRIVATE_ASSOCIATIONKEY ** key)
 {
-    if (*key && (*key)->connection) delete (*key)->connection;
-    free(*key);
-    *key = NULL;
+	if( key == NULL)
+		return;
+		
+    if (*key && (*key)->connection)
+		delete (*key)->connection;
+    
+    if (*key)
+        free(*key);
+    
+	*key = NULL;
 }
 
 

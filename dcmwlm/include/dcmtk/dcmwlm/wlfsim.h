@@ -118,8 +118,7 @@ class DCMTK_DCMWLM_EXPORT WlmFileSystemInteractionManager
        *  and incomplete in the given dataset.
        *  @param sequenceTagKey The sequence attribute which shall be checked.
        *  @param dset The dataset in which the attribute is contained.
-       *  @return OFTrue in case the sequence attribute is absent (and cannot be added to the dataset)
-       *          or existent but non-empty and incomplete, OFFalse otherwise.
+       *  @return OFTrue in case the sequence attribute is absent or existent but non-empty and incomplete, OFFalse otherwise.
        */
     OFBool ReferencedStudyOrPatientSequenceIsAbsentOrExistentButNonEmptyAndIncomplete( DcmTagKey sequenceTagKey, DcmItem *dset );
 

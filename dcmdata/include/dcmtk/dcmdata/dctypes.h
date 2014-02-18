@@ -77,6 +77,14 @@ extern DCMTK_DCMDATA_EXPORT OFLogger DCM_dcmdataLogger;
 
 
 /*
+** Type Definitions
+*/
+
+typedef Uint8		    BYTE;
+typedef Sint8		    SBYTE;
+
+
+/*
 ** Enumerated Types
 */
 

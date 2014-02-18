@@ -389,13 +389,26 @@ OFCondition DcmDicomDir::linkMRDRtoRecord( DcmDirectoryRecord *dRec )
 
 // ********************************
 
+static int reentry = 0;
+#define MAXREENTRY 50
 
 OFCondition DcmDicomDir::moveRecordToTree( DcmDirectoryRecord *startRec,
                                            DcmSequenceOfItems &fromDirSQ,
                                            DcmDirectoryRecord *toRecord )
 {
     OFCondition l_error = EC_Normal;
-
+    
+    if( reentry > MAXREENTRY)
+    {
+        ofConsole.lockCerr() << "DcmDicomDir::moveRecordToTree() maximum reentry reached - return" << endl;
+        ofConsole.unlockCerr();
+        
+        l_error = EC_IllegalCall;
+        return l_error;
+    }
+    
+    reentry++;
+    
     if (toRecord  == NULL)
         l_error = EC_IllegalCall;
     else
@@ -443,7 +456,9 @@ OFCondition DcmDicomDir::moveRecordToTree( DcmDirectoryRecord *startRec,
             startRec = nextRec;
         }
     }
-
+    
+    reentry--;
+    
     return l_error;
 }
 

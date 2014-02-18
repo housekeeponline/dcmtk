@@ -488,6 +488,13 @@ OFBool DcmItem::canWriteXfer(const E_TransferSyntax newXfer,
         do {
             dO = elementList->get();
             canWrite = dO->canWriteXfer(newXfer, oldXfer);
+            
+#ifndef NDEBUG
+            if( canWrite == OFFalse) {
+                printf( "--- cannot write");
+            }
+#endif
+            
         } while (elementList->seek(ELP_next) && canWrite);
     }
     return canWrite;
@@ -2155,10 +2162,17 @@ OFCondition newDicomElement(DcmElement *&newElement,
        */
       if (newTag.getEVR() != EVR_UNKNOWN)
       {
+		if( newTag.getEVR() != EVR_SQ)	// ANR - 2008
+		{
           tag.setVR(newTag.getVR());
           evr = tag.getEVR();
           readAsUN = OFTrue;
-      }
+		}
+		else
+		{
+			printf( "******************* ******************* ******************* if( newTag.getEVR() != EVR_SQ)	// ANR - 2008 ******************* \r");
+		}
+	  }
     }
 
     /* depending on the VR of the tag which was passed, create the new object */

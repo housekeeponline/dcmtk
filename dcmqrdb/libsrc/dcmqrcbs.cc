@@ -31,6 +31,8 @@
 #include "dcmtk/dcmqrdb/dcmqrdbi.h"
 
 
+int gPutDstAETitleInPrivateInformationCreatorUID = 0, gPutSrcAETitleInSourceApplicationEntityTitle = 0;
+
 void DcmQueryRetrieveStoreContext::updateDisplay(T_DIMSE_StoreProgress * progress)
 {
   // We can't use oflog for the pdu output, but we use a special logger for
@@ -98,22 +100,51 @@ void DcmQueryRetrieveStoreContext::writeToFile(
     const char* fname,
     T_DIMSE_C_StoreRSP *rsp)
 {
-    E_TransferSyntax xfer = options_.writeTransferSyntax_;
-    if (xfer == EXS_Unknown) xfer = ff->getDataset()->getOriginalXfer();
-
+	
+	E_TransferSyntax xfer = ff->getDataset()->getOriginalXfer();
+	
     OFCondition cond = ff->saveFile(fname, xfer, options_.sequenceType_,
         options_.groupLength_, options_.paddingType_, (Uint32)options_.filepad_,
         (Uint32)options_.itempad_, (options_.useMetaheader_) ? EWM_fileformat : EWM_dataset);
-
-    if (cond.bad())
-    {
+	
+	if (cond.bad())
+	{
       DCMQRDB_ERROR("storescp: Cannot write image file: " << fname);
-      rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
-    }
+		DimseCondition::dump(cond);
+		rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
+	}
+	
+//    E_TransferSyntax xfer = options_.writeTransferSyntax_;
+//    if (xfer == EXS_Unknown)
+//	{
+//		xfer = ff->getDataset()->getOriginalXfer();
+//		
+//		OFCondition cond = ff->saveFile(fname, xfer, options_.sequenceType_, 
+//			options_.groupLength_, options_.paddingType_, (Uint32)options_.filepad_, 
+//			(Uint32)options_.itempad_, (!options_.useMetaheader_));
+//		
+//		if (cond.bad())
+//		{
+//		  fprintf(stderr, "storescp: Cannot write image file: %s\n", fname);
+//		  DimseCondition::dump(cond);
+//		  rsp->DimseStatus = STATUS_STORE_Refused_OutOfResources;
+//		}
+//	}
+//	else
+//	{
+//		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+//		
+//		NSDictionary *params = [NSDictionary dictionaryWithObjectsAndKeys: [NSValue valueWithPointer: ff->clone()], @"ff", [NSString stringWithUTF8String: fname], @"fname", [NSNumber numberWithInt: xfer], @"xfer", [NSValue valueWithPointer: &options_], @"options", nil];
+//	
+//		[NSThread detachNewThreadSelector: @selector(writeFile:) toTarget: [writeClass class] withObject: params];
+//		
+//		[pool release];
+//	}
 }
 
 void DcmQueryRetrieveStoreContext::checkRequestAgainstDataset(
-    T_DIMSE_C_StoreRQ *req,     /* original store request */
+    T_DIMSE_C_StoreRQ *req,   
+															  /* original store request */
     const char* fname,          /* filename of dataset */
     DcmDataset *dataSet,        /* dataset to check */
     T_DIMSE_C_StoreRSP *rsp,    /* final store response */
@@ -147,6 +178,8 @@ void DcmQueryRetrieveStoreContext::callbackHandler(
     T_DIMSE_StoreProgress *progress,    /* progress state */
     T_DIMSE_C_StoreRQ *req,             /* original store request */
     char *imageFileName,       /* being received into */
+    char *sourceAETitle,
+    char *destinationAETitle,
     DcmDataset **imageDataSet, /* being received into */
     /* out */
     T_DIMSE_C_StoreRSP *rsp,            /* final store response */
@@ -155,7 +188,7 @@ void DcmQueryRetrieveStoreContext::callbackHandler(
     updateDisplay(progress);
 
     if (progress->state == DIMSE_StoreEnd) {
-
+		/*
         if (!options_.ignoreStoreData_ && rsp->DimseStatus == STATUS_Success) {
             if ((imageDataSet)&&(*imageDataSet)) {
                 checkRequestAgainstDataset(req, NULL, *imageDataSet, rsp, correctUIDPadding);
@@ -163,10 +196,27 @@ void DcmQueryRetrieveStoreContext::callbackHandler(
                 checkRequestAgainstDataset(req, imageFileName, NULL, rsp, correctUIDPadding);
             }
         }
-
+		*/
         if (!options_.ignoreStoreData_ && rsp->DimseStatus == STATUS_Success) {
-            if ((imageDataSet)&&(*imageDataSet)) {
-                writeToFile(dcmff, fileName, rsp);
+            if ((imageDataSet)&&(*imageDataSet))
+			{
+                DcmMetaInfo *metaInfo = dcmff->getMetaInfo();
+                if( metaInfo)
+                {
+                    if( gPutSrcAETitleInSourceApplicationEntityTitle)
+                    {
+                        if( sourceAETitle)
+                            metaInfo->putAndInsertString( DCM_SourceApplicationEntityTitle, sourceAETitle);
+                    }
+                    
+                    if( gPutDstAETitleInPrivateInformationCreatorUID)
+                    {
+                        if( destinationAETitle)
+                            metaInfo->putAndInsertString( DCM_PrivateInformationCreatorUID, destinationAETitle);
+                    }
+                }
+                
+				writeToFile(dcmff, fileName, rsp);
             }
             if (rsp->DimseStatus == STATUS_Success) {
                 saveImageToDB(req, fileName, rsp, stDetail);

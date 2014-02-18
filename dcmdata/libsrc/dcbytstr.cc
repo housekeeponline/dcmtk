@@ -498,7 +498,12 @@ Uint8 *DcmByteString::newValueField()
         // back to the caller.
         value = new (std::nothrow) Uint8[lengthField + 2];
 #else
-        value = new Uint8[lengthField + 2];
+        try {
+            value = new Uint8[lengthField + 2];
+        } catch (...) {
+            value = NULL;
+        }
+        
 #endif
 
         /* terminate string after real length */
@@ -519,7 +524,11 @@ Uint8 *DcmByteString::newValueField()
         // back to the caller.
         value = new (std::nothrow) Uint8[lengthField + 1];
 #else
-        value = new Uint8[lengthField + 1];
+        try {
+            value = new Uint8[lengthField + 1];
+        } catch (...) {
+            value = NULL;
+        }
 #endif
     }
     /* make sure that the string is properly terminated by a 0 byte */

@@ -378,6 +378,14 @@ class DCMTK_DCMDATA_EXPORT DicomDirInterface
     {
         return IconImageMode;
     }
+    
+    /**
+     * Added in OsiriX
+     */
+    OFBool oneIconPerSeriesMode() const
+    {
+        return OneIconPerSeriesMode;
+    }
 
     /** get current status of the "create backup" mode.
      *  See enableBackupMode() for more details.
@@ -481,6 +489,8 @@ class DCMTK_DCMDATA_EXPORT DicomDirInterface
      */
     OFBool enableIconImageMode(const OFBool newMode = OFTrue);
 
+    OFBool enableOneIconPerSeriesMode(const OFBool newMode = OFTrue);
+    
     /** disable/enable the "create backup file" mode.
      *  If this mode is disabled no backup file of an existing DICOMDIR is created.
      *  However, when appending new files to an existing DICOMDIR a _temporary_
@@ -1488,6 +1498,8 @@ class DCMTK_DCMDATA_EXPORT DicomDirInterface
     OFBool IconImageMode;
     /// update existing fileset
     OFBool FilesetUpdateMode;
+    /// one icon per seires mode
+    OFBool OneIconPerSeriesMode;
 
     /// name of the DICOMDIR backup file
     OFString BackupFilename;
@@ -1528,6 +1540,8 @@ class DCMTK_DCMDATA_EXPORT DicomDirInterface
 
     /// private undefined assignment operator
     DicomDirInterface &operator=(const DicomDirInterface &obj);
+    
+    void addOneImagePerSeries();
 };
 
 

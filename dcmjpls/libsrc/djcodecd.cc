@@ -37,7 +37,7 @@
 #include "djerror.h"                 /* for private class DJLSError */
 
 // JPEG-LS library (CharLS) includes
-#include "intrface.h"
+#include "interface.h"
 
 E_TransferSyntax DJLSLosslessDecoder::supportedTransferSyntax() const
 {
@@ -253,15 +253,15 @@ OFCondition DJLSDecoderBase::decodeFrame(
 
   // if the user has provided this information, we trust him.
   // If the user has passed a zero, try to find out ourselves.
-  if (currentItem == 0)
-  {
-    result = determineStartFragment(frameNo, imageFrames, fromPixSeq, currentItem);
-  }
+//  if (currentItem == 0)
+//  {
+//    result = determineStartFragment(frameNo, imageFrames, fromPixSeq, currentItem);
+//  }
 
   if (result.good())
   {
     // We got all the data we need from the dataset, let's start decoding
-    DCMJPLS_DEBUG("Starting to decode frame " << frameNo << " with fragment " << currentItem);
+//    DCMJPLS_DEBUG("Starting to decode frame " << frameNo << " with fragment " << currentItem);
     result = decodeFrame(fromPixSeq, djcp, dataset, frameNo, currentItem, buffer, bufSize,
         imageFrames, imageColumns, imageRows, imageSamplesPerPixel, bytesPerSample);
   }
@@ -490,7 +490,7 @@ Uint16 DJLSDecoderBase::determinePlanarConfiguration(
   const OFString& photometricInterpretation)
 {
   // Hardcopy Color Image always requires color-by-plane
-  if (sopClassUID == UID_RETIRED_HardcopyColorImageStorage) return 1;
+//  if (sopClassUID == UID_RETIRED_HardcopyColorImageStorage) return 1;
 
   // The 1996 Ultrasound Image IODs require color-by-plane if color model is YBR_FULL.
   if (photometricInterpretation == "YBR_FULL")

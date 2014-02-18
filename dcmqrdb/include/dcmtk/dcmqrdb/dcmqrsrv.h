@@ -67,7 +67,7 @@ public:
     const DcmQueryRetrieveDatabaseHandleFactory& factory);
 
   /// destructor
-  virtual ~DcmQueryRetrieveSCP() { }
+  ~DcmQueryRetrieveSCP();
 
   /** wait for incoming A-ASSOCIATE requests, perform association negotiation
    *  and serve the requests. May fork child processes depending on availability
@@ -85,12 +85,29 @@ public:
     OFBool dbCheckFindIdentifier,
     OFBool dbCheckMoveIdentifier);
 
+	
+	void setSecureConnection(OFBool secureConnection);
+	
   /** clean up terminated child processes.
    */
   void cleanChildren();
 
-private:
+OFCondition storeSCP(
+    T_ASC_Association * assoc,
+    T_DIMSE_C_StoreRQ * req,
+    T_ASC_PresentationContextID presId,
+    DcmQueryRetrieveDatabaseHandle& dbHandle,
+    OFBool correctUIDPadding);
 
+
+
+  void lockFile(void);
+  void unlockFile(void);
+  void waitUnlockFile(void);
+  void writeErrorMessage( const char *str);
+  void writeStateProcess( const char *str, T_ASC_Association *assoc);
+  NSString* getErrorMessage();
+  
   /// private undefined copy constructor
   DcmQueryRetrieveSCP(const DcmQueryRetrieveSCP& other);
 
@@ -134,13 +151,6 @@ private:
     T_ASC_PresentationContextID presID,
     DcmQueryRetrieveDatabaseHandle& dbHandle);
 
-  OFCondition storeSCP(
-    T_ASC_Association * assoc,
-    T_DIMSE_C_StoreRQ * req,
-    T_ASC_PresentationContextID presId,
-    DcmQueryRetrieveDatabaseHandle& dbHandle,
-    OFBool correctUIDPadding);
-
   OFCondition dispatch(
     T_ASC_Association *assoc,
     OFBool correctUIDPadding);
@@ -151,7 +161,7 @@ private:
   const DcmQueryRetrieveConfig *config_;
 
   /// child process table, only used in multi-processing mode
-  DcmQueryRetrieveProcessTable processtable_;
+//  DcmQueryRetrieveProcessTable processtable_;
 
   /// flag for database interface: check C-FIND identifier
   OFBool dbCheckFindIdentifier_;
@@ -159,11 +169,20 @@ private:
   /// flag for database interface: check C-MOVE identifier
   OFBool dbCheckMoveIdentifier_;
 
+  OFBool activateCGETSCP_;
+  OFBool activateCFINDSCP_;
+
+  OFBool secureConnection_;
+	
   /// factory object used to create database handles
   const DcmQueryRetrieveDatabaseHandleFactory& factory_;
 
   /// SCP configuration options
   const DcmQueryRetrieveOptions& options_;
+    
+private:
+    
+    int index;
 };
 
 #endif

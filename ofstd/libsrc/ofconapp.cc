@@ -245,7 +245,7 @@ void OFConsoleApplication::printError(const char *str,
         ofConsole.lockCerr() << "error: " << str << OFendl;
         ofConsole.unlockCerr();
     }
-    exit(code);
+ //   exit(code);
 }
 
 

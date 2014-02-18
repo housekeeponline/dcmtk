@@ -369,6 +369,12 @@ class DiInputPixelTemplate
         const OFBool uncompressed = pixelData->canWriteXfer(EXS_LittleEndianExplicit, EXS_Unknown);
         /* check whether to use partial read */
         if ((document->getFlags() & CIF_UsePartialAccessToPixelData) && (PixelCount > 0) && (bitsAllocated % 8 == 0))
+        
+        /* need to split 'length' in order to avoid integer overflow for large pixel data */
+        const Uint32 length_B1 = length_Bytes / bitsAllocated;
+        const Uint32 length_B2 = length_Bytes % bitsAllocated;
+        Count = 8 * length_B1 + (8 * length_B2 + bitsAllocated - 1) / bitsAllocated;
+        
         {
             /* Bits Allocated is always a multiple of 8 (see above), same for bits of T1 */
             const Uint32 byteFactor = bitsAllocated / 8;

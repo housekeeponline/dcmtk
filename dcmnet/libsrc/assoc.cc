@@ -245,7 +245,7 @@ ASC_initializeNetwork(T_ASC_NetworkRole role,
     OFCondition cond = DUL_InitializeNetwork(mode, &acceptorPort, timeout, DUL_ORDERBIGENDIAN | options, &netkey);
     if (cond.bad()) return cond;
 
-    *network = (T_ASC_Network *) malloc(sizeof(T_ASC_Network));
+    *network = (T_ASC_Network *) calloc(sizeof(T_ASC_Network), 1);
     if (*network == NULL) return EC_MemoryExhausted;
     (*network)->role = role;
     (*network)->acceptorPort = acceptorPort;
@@ -279,7 +279,7 @@ ASC_createAssociationParameters(T_ASC_Parameters ** params,
         long maxReceivePDUSize)
 {
 
-    *params = (T_ASC_Parameters *) malloc(sizeof(**params));
+    *params = (T_ASC_Parameters *) calloc(sizeof(**params), 1);
     if (*params == NULL) return EC_MemoryExhausted;
     bzero((char*)*params, sizeof(**params));
 
@@ -364,7 +364,9 @@ ASC_destroyAssociationParameters(T_ASC_Parameters ** params)
   * association terminates.
   */
 {
-
+	if( params == NULL) return EC_Normal;
+	if( *params == NULL) return EC_Normal;
+	
     /* free the elements in the requested presentation context list */
     destroyPresentationContextList(
         &((*params)->DULparams.requestedPresentationContext));
@@ -686,7 +688,7 @@ ASC_addPresentationContext(
     OFCondition cond = EC_Normal;
     for (i=0; i<transferSyntaxListCount; i++)
     {
-        transfer = (DUL_TRANSFERSYNTAX*)malloc(sizeof(DUL_TRANSFERSYNTAX));
+        transfer = (DUL_TRANSFERSYNTAX*) calloc(sizeof(DUL_TRANSFERSYNTAX), 1);
         if (transfer == NULL) return EC_MemoryExhausted;
         strcpy(transfer->transferSyntax, transferSyntaxList[i]);
         LST_Enqueue(&lst, (LST_NODE*)transfer);
@@ -1127,6 +1129,7 @@ ASC_findAcceptedPresentationContextID(
     {
         found = (strcmp(pc->abstractSyntax, abstractSyntax) == 0)
                 && (pc->result == ASC_P_ACCEPTANCE)
+                && (strcmp(pc->acceptedTransferSyntax, UID_LittleEndianImplicitTransferSyntax) == 0);
                 && (strcmp(pc->acceptedTransferSyntax, UID_LittleEndianImplicitTransferSyntax) == 0);
         if (!found) pc = (DUL_PRESENTATIONCONTEXT*) LST_Next(l);
     }
@@ -1736,7 +1739,7 @@ ASC_receiveAssociation(T_ASC_Network * network,
         return cond;
     }
 
-    *assoc = (T_ASC_Association *) malloc(sizeof(**assoc));
+    *assoc = (T_ASC_Association *) calloc(sizeof(**assoc), 1);
     if (*assoc == NULL)
     {
         ASC_destroyAssociationParameters(&params);
@@ -1879,7 +1882,7 @@ ASC_requestAssociation(T_ASC_Network * network,
       return makeDcmnetCondition(ASCC_CODINGERROR, OF_error, "ASC Coding error in ASC_requestAssociation: missing presentation contexts");
     }
 
-    *assoc = (T_ASC_Association *) malloc(sizeof(**assoc));
+    *assoc = (T_ASC_Association *) calloc(sizeof(**assoc), 1);
     if (*assoc == NULL) return EC_MemoryExhausted;
     bzero((char*)*assoc, sizeof(**assoc));
 
@@ -1954,7 +1957,7 @@ ASC_requestAssociation(T_ASC_Network * network,
             sendLen = ASC_MINIMUMPDUSIZE - 12;
         }
         (*assoc)->sendPDVLength = sendLen;
-        (*assoc)->sendPDVBuffer = (unsigned char*)malloc(size_t(sendLen));
+        (*assoc)->sendPDVBuffer = (unsigned char*) calloc(size_t(sendLen), 1);
         if ((*assoc)->sendPDVBuffer == NULL) return EC_MemoryExhausted;
         strcpy(params->theirImplementationClassUID,
            params->DULparams.calledImplementationClassUID);
@@ -2037,7 +2040,7 @@ ASC_acknowledgeAssociation(
             sendLen = ASC_MINIMUMPDUSIZE - 12;
         }
         assoc->sendPDVLength = sendLen;
-        assoc->sendPDVBuffer = (unsigned char*)malloc(size_t(sendLen));
+        assoc->sendPDVBuffer = (unsigned char*) calloc(size_t(sendLen), 1);
         if (assoc->sendPDVBuffer == NULL) return EC_MemoryExhausted;
     }
     return cond;

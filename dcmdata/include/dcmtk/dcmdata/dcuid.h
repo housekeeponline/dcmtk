@@ -358,6 +358,7 @@ DCMTK_DCMDATA_EXPORT unsigned long dcmGuessModalityBytes(const char *sopClassUID
 #define UID_CTImageStorage                                         "1.2.840.10008.5.1.4.1.1.2"
 #define UID_EnhancedCTImageStorage                                 "1.2.840.10008.5.1.4.1.1.2.1"
 #define UID_LegacyConvertedEnhancedCTImageStorage                  "1.2.840.10008.5.1.4.1.1.2.2"
+#define UID_EnhancedPETImageStorage                                "1.2.840.10008.5.1.4.1.1.130"
 #define UID_RETIRED_UltrasoundMultiframeImageStorage               "1.2.840.10008.5.1.4.1.1.3"
 #define UID_UltrasoundMultiframeImageStorage                       "1.2.840.10008.5.1.4.1.1.3.1"
 #define UID_MRImageStorage                                         "1.2.840.10008.5.1.4.1.1.4"
@@ -451,6 +452,10 @@ DCMTK_DCMDATA_EXPORT unsigned long dcmGuessModalityBytes(const char *sopClassUID
 #define UID_XRayRadiationDoseSRStorage                             "1.2.840.10008.5.1.4.1.1.88.67"
 #define UID_ColonCADSRStorage                                      "1.2.840.10008.5.1.4.1.1.88.69"
 #define UID_ImplantationPlanSRDocumentStorage                      "1.2.840.10008.5.1.4.1.1.88.70"
+#define XRay3DAngiographicImageStorage                             "1.2.840.10008.5.1.4.1.1.13.1.1"
+#define XRay3DCraniofacialImageStorage                             "1.2.840.10008.5.1.4.1.1.13.1.2"
+#define UID_BreastTomosynthesisImageStorage                        "1.2.840.10008.5.1.4.1.1.13.1.3"
+
 #define UID_EncapsulatedPDFStorage                                 "1.2.840.10008.5.1.4.1.1.104.1"
 #define UID_EncapsulatedCDAStorage                                 "1.2.840.10008.5.1.4.1.1.104.2"
 #define UID_PositronEmissionTomographyImageStorage                 "1.2.840.10008.5.1.4.1.1.128"
@@ -698,6 +703,8 @@ DCMTK_DCMDATA_EXPORT unsigned long dcmGuessModalityBytes(const char *sopClassUID
 #define UID_PET20StepColorPaletteSOPInstance                       "1.2.840.10008.1.5.4"
 
 // Private DCMTK UIDs
+#define UID_PhilipsPrivateXRayMFStorage                             "1.3.46.670589.7.8.1618510091"
+#define UID_SiemensCSAPrivateNonImageStorage                        "1.3.12.2.1107.5.9.1"
 
 // Private SOP Class UID used to shutdown external network applications
 #define UID_PrivateShutdownSOPClass                                "1.2.276.0.7230010.3.4.1915765545.18030.917282194.0"

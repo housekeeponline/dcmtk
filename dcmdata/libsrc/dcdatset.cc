@@ -240,6 +240,9 @@ Uint32 DcmDataset::calcElementLength(const E_TransferSyntax xfer,
 OFBool DcmDataset::canWriteXfer(const E_TransferSyntax newXfer,
                                 const E_TransferSyntax oldXfer)
 {
+    //First : GE private group...
+    delete remove( DcmTagKey( 0x0009, 0x1110)); // "GEIIS" The problematic private group, containing a *always* JPEG compressed PixelData
+    
     if (newXfer == EXS_Unknown)
         return OFFalse;
 
@@ -527,7 +530,12 @@ OFCondition DcmDataset::write(DcmOutputStream &outStream,
           do
           {
             dO = elementList->get();
-            errorFlag = dO->write(outStream, newXfer, enctype, wcache);
+			
+			if( dO->getGTag() == 0x9 && dO->getETag() == 0x1010) // GE Icon bug.... JPEG Data
+				errorFlag = errorFlag;
+			else
+				errorFlag = dO->write(outStream, newXfer, enctype);
+			  
           } while (errorFlag.good() && elementList->seek(ELP_next));
         }
 
@@ -667,6 +675,9 @@ OFCondition DcmDataset::saveFile(const OFFilename &fileName,
 OFCondition DcmDataset::chooseRepresentation(const E_TransferSyntax repType,
                                              const DcmRepresentationParameter *repParam)
 {
+    //First : GE private group...
+    delete remove( DcmTagKey( 0x0009, 0x1110)); // "GEIIS" The problematic private group, containing a *always* JPEG compressed PixelData
+    
     OFCondition l_error = EC_Normal;
     OFStack<DcmStack> pixelStack;
 

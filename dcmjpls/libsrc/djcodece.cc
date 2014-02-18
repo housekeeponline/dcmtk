@@ -55,7 +55,7 @@
 #include "dcmtk/dcmimgle/dcmimage.h"  /* for class DicomImage */
 
 // JPEG-LS library (CharLS) includes
-#include "intrface.h"
+#include "interface.h"
 
 BEGIN_EXTERN_C
 #ifdef HAVE_FCNTL_H
@@ -99,6 +99,13 @@ OFBool DJLSEncoderBase::canChangeCoding(
 {
   // this codec only handles conversion from uncompressed to JPEG-LS.
   DcmXfer oldRep(oldRepType);
+    
+  if (newRepType == EXS_JPEGLSLossless && (oldRepType == EXS_JPEGLSLossy))
+        return OFTrue;
+
+  if (newRepType == EXS_JPEGLSLossy && (oldRepType == EXS_JPEGLSLossless))
+        return OFTrue;
+    
   return (oldRep.isNotEncapsulated() && (newRepType == supportedTransferSyntax()));
 }
 
@@ -140,6 +147,22 @@ OFCondition DJLSEncoderBase::encode(
     const DcmCodecParameter * /* cp */,
     DcmStack & /* objStack */) const
 {
+    if( fromRepType == EXS_JPEGLSLossless)
+    {
+        toPixSeq = new DcmPixelSequence( *fromPixSeq);
+        toPixSeq->changeXfer( EXS_JPEGLSLossy);
+        
+        return EC_Normal;
+    }
+    
+    if( fromRepType == EXS_JPEGLSLossy)
+    {
+        toPixSeq = new DcmPixelSequence( *fromPixSeq);
+        toPixSeq->changeXfer( EXS_JPEGLSLossless);
+        
+        return EC_Normal;
+    }
+    
   // we don't support re-coding for now.
   return EC_IllegalCall;
 }
@@ -641,8 +664,8 @@ OFCondition DJLSEncoderBase::compressRawFrame(
   if ((jls_params.ilv == ILV_NONE && (ilv == ILV_SAMPLE || ilv == ILV_LINE)) ||
       (ilv == ILV_NONE && (jls_params.ilv == ILV_SAMPLE || jls_params.ilv == ILV_LINE)))
   {
-    DCMJPLS_DEBUG("Converting image from " << (ilv == ILV_NONE ? "color-by-plane" : "color-by-pixel")
-          << " to " << (jls_params.ilv == ILV_NONE ? "color-by-plane" : "color-by-pixel"));
+//    DCMJPLS_DEBUG("Converting image from " << (ilv == ILV_NONE ? "color-by-plane" : "color-by-pixel")
+//          << " to " << (jls_params.ilv == ILV_NONE ? "color-by-plane" : "color-by-pixel"));
 
     frameBuffer = new Uint8[frameSize];
     if (jls_params.ilv == ILV_NONE)
@@ -796,7 +819,7 @@ OFCondition DJLSEncoderBase::losslessCookedEncode(
     for (unsigned long i=0; (i<frameCount) && (result.good()); ++i)
     {
       // compress frame
-      DCMJPLS_DEBUG("JPEG-LS encoder processes frame " << (i+1) << " of " << frameCount);
+//      DCMJPLS_DEBUG("JPEG-LS encoder processes frame " << (i+1) << " of " << frameCount);
       result = compressCookedFrame(pixelSequence, dimage,
           photometricInterpretation, offsetList, compressedFrameSize, djcp, i, nearLosslessDeviation);
 

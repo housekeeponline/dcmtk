@@ -1286,12 +1286,16 @@ DIMSE_receiveCommand(
     /* parse the information in cmdSet and create a corresponding T_DIMSE_Message */
     /* structure which represents the the DIMSE message which was received */
     cond = DIMSE_parseCmdObject(msg, cmdSet);
+	if (debug)
+		printf("DIMSE_parseCmdObject\n");
 
     /* if the T_DIMSE_Message structure was created successfully, validate the message, i.e. */
     /* check if the information which is contained in msg meets certain conditions */
     if (cond == EC_Normal) {
         cond = validateMessage(assoc, msg);
     }
+	if (debug)
+		printf("DIMSE_validate\n");
 
     /* Whatever is left in the cmdSet object should be status detail */
     /* information. Return this information to the caller if required. */
@@ -1315,7 +1319,8 @@ DIMSE_receiveCommand(
 
     /* set the Presentation Context ID we received (out parameter) */
     *presID = pid;
-
+	if (debug)
+		printf("DIMSE_recieveCommand finished\n");
     /* return result value */
     return cond;
 }
